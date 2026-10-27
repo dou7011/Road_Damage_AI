@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}道路損壞智慧辨識{% endblock %}
+{% block content %}
+<section class="hero">
+  <h1>找出路面的裂縫與坑洞</h1>
+  <p>上傳道路照片或影片，AI 會自動標出損壞位置。所有辨識都在你的電腦上進行。</p>
+</section>
+<section class="choices" aria-label="選擇功能">
+  <a class="choice" href="{{ url_for('routes.image_page') }}">
+    <span class="choice-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-8 8"/></svg></span>
+    <h2>圖片辨識</h2>
+    <p>一次上傳多張照片，快速看到每張的損壞情況。</p>
+    <span class="choice-go">開始使用 →</span>
+  </a>
+  <a class="choice" href="{{ url_for('routes.video_page') }}">
+    <span class="choice-icon"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9.5 5 2.5-5 2.5z"/></svg></span>
+    <h2>影片辨識</h2>
+    <p>上傳影片或貼上 YouTube 連結，逐幀找出損壞並標示時間點。</p>
+    <span class="choice-go">開始使用 →</span>
+  </a>
+</section>
+<section class="legend" aria-label="可辨識的損壞類型">
+  <h3>可辨識的 4 種損壞</h3>
+  <ul>
+    <li><i style="background:#38bdf8"></i><b>縱向裂縫</b><span>D00</span></li>
+    <li><i style="background:#a78bfa"></i><b>橫向裂縫</b><span>D10</span></li>
+    <li><i style="background:#fbbf24"></i><b>龜裂</b><span>D20</span></li>
+    <li><i style="background:#fb7185"></i><b>坑洞</b><span>D40</span></li>
+  </ul>
+</section>
+{% endblock %}

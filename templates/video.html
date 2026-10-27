@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}影片辨識{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>影片辨識</h1>
+  <p>上傳影片或貼上 YouTube 連結，找出損壞並標示發生的時間點。</p>
+</section>
+
+<section id="inputCard" class="card">
+  <div class="seg tabs" role="tablist" aria-label="影片來源">
+    <button id="uploadVideoTab" role="tab" type="button" aria-selected="true" aria-controls="uploadVideoPanel">上傳影片</button>
+    <button id="youtubeTab" role="tab" type="button" aria-selected="false" aria-controls="youtubePanel" tabindex="-1">YouTube 連結</button>
+  </div>
+
+  <div id="uploadVideoPanel" role="tabpanel" aria-labelledby="uploadVideoTab">
+    <label id="videoDropzone" class="dropzone" for="videoInput">
+      <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <strong id="videoFileLabel">拖曳影片到這裡</strong>
+      <span id="videoFileInfo">或 <u>選擇檔案</u></span>
+      <small>MP4、AVI、MOV、MKV · 256 MB 內 · 最長 10 分鐘</small>
+      <input id="videoInput" type="file" accept=".mp4,.avi,.mov,.mkv">
+    </label>
+    <div class="form-actions">
+      <button id="videoReset" class="btn ghost" type="button" hidden>重新選擇</button>
+      <button id="videoDetect" class="btn primary" type="button" disabled>開始辨識</button>
+    </div>
+  </div>
+
+  <div id="youtubePanel" role="tabpanel" aria-labelledby="youtubeTab" hidden>
+    <form id="youtubeForm" novalidate>
+      <label for="youtubeUrl" class="field-label">YouTube 影片連結</label>
+      <input id="youtubeUrl" class="input" type="url" required maxlength="2048" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off" inputmode="url">
+      <label class="check"><input id="youtubeAuthorized" type="checkbox" required><span>我有權使用這部影片，且符合 YouTube 條款與著作權規範</span></label>
+      <div class="form-actions">
+        <button id="youtubeAnalyze" class="btn primary" type="submit">開始辨識</button>
+      </div>
+    </form>
+    <details class="more">
+      <summary>使用限制</summary>
+      <ul class="plain-list">
+        <li>只支援公開、單支影片（watch、youtu.be、Shorts），長度 10 分鐘內。</li>
+        <li>最高取得 720p；不支援直播、需登入、年齡限制、會員或 DRM 影片。</li>
+        <li>不使用 Cookies 或登入資料。若 YouTube 拒絕連線，請改用「上傳影片」。</li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<p id="videoError" class="alert" role="alert" hidden></p>
+
+<section id="videoProgressArea" class="card progress-card" hidden aria-live="polite">
+  <div class="progress-head">
+    <strong id="videoPhase">準備中</strong>
+    <span id="videoPercent" class="muted">0%</span>
+  </div>
+  <progress id="videoProgress" max="100" value="0" aria-label="影片處理進度"></progress>
+  <ol id="steps" class="steps" aria-label="處理步驟">
+    <li data-step="get">取得影片</li>
+    <li data-step="detect">逐幀辨識</li>
+    <li data-step="encode">輸出影片</li>
+  </ol>
+  <p id="videoProgressInfo" class="muted"></p>
+  <p id="youtubeInfo" class="source-info" hidden></p>
+  <button id="videoResume" class="btn ghost" type="button" hidden>重新查詢進度</button>
+</section>
+
+<section id="result" hidden aria-label="辨識結果">
+  <div class="result-head">
+    <div>
+      <h2>辨識完成</h2>
+      <p id="videoMessage" class="muted"></p>
+    </div>
+    <div class="result-actions">
+      <a id="videoDownload" class="btn primary disabled" aria-disabled="true" download>下載辨識影片</a>
+      <a id="videoJson" class="btn ghost disabled" aria-disabled="true" download>JSON</a>
+      <a id="videoCsv" class="btn ghost disabled" aria-disabled="true" download>CSV</a>
+      <button id="videoAgain" class="btn ghost" type="button">分析其他影片</button>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><span>有損壞的畫面</span><strong id="videoDamagedFrames">—</strong></div>
+    <div class="kpi"><span>損壞偵測次數</span><strong id="videoTotal">—</strong></div>
+    <div class="kpi"><span>影片長度</span><strong id="videoDuration">—</strong></div>
+    <div class="kpi"><span>處理時間</span><strong id="videoTime">—</strong></div>
+  </div>
+
+  <div class="player">
+    <figure class="player-main">
+      <video id="videoResult" controls playsinline preload="auto" aria-label="已標記道路損壞的影片"></video>
+      <div id="timeline" class="timeline" role="group" aria-label="標點時間軸"></div>
+      <figcaption class="hint">時間軸上的線條是有標點的位置，點一下會跳到最近的標點。右側清單會跟著播放進度移動。</figcaption>
+    </figure>
+    <aside class="events" aria-label="標點列表">
+      <div class="events-head"><h3>標點列表</h3><span id="eventCount" class="muted"></span></div>
+      <div class="now"><span id="nowInfo">—</span><button id="followToggle" class="follow" type="button" aria-pressed="true">自動跟隨</button></div>
+      <p id="eventEmpty" class="empty" hidden>沒有偵測到損壞</p>
+      <div id="eventList" class="det-list"><div id="detSpacer"></div><i id="playhead" class="playhead" hidden></i></div>
+    </aside>
+  </div>
+
+  <details class="more card-more">
+    <summary>各類別統計</summary>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>類別</th><th>偵測次數</th><th>平均信心</th></tr></thead>
+        <tbody id="videoStats"></tbody>
+      </table>
+    </div>
+    <p class="hint">這是逐幀統計，沒有物件追蹤：同一處損壞出現在連續畫面會重複計算。</p>
+  </details>
+
+  <details class="more card-more">
+    <summary>技術資訊</summary>
+    <dl class="info-grid">
+      <div><dt>解析度</dt><dd id="videoResolution">—</dd></div>
+      <div><dt>FPS</dt><dd id="videoFps">—</dd></div>
+      <div><dt>處理畫面數</dt><dd id="videoFrames">—</dd></div>
+      <div><dt>平均每幀耗時</dt><dd id="videoAverageTime">—</dd></div>
+      <div><dt>純推論耗時</dt><dd id="videoInference">—</dd></div>
+      <div><dt>整體平均信心</dt><dd id="videoOverallConfidence">—</dd></div>
+      <div class="wide"><dt>來源</dt><dd id="videoInputDetails">—</dd></div>
+    </dl>
+    <p class="hint">輸出影片無音訊，以固定 FPS 重新編碼。處理結果保留 24 小時。</p>
+  </details>
+</section>
+{% endblock %}
+{% block scripts %}<script defer src="{{ url_for('static', filename='js/video.js') }}"></script>{% endblock %}

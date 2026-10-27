@@ -1,0 +1,7 @@
+Flask>=3.1,<4
+ultralytics>=8.4,<9
+opencv-python>=4.10,<5
+Pillow>=11,<13
+imageio-ffmpeg>=0.6,<0.7
+certifi>=2024.2.2
+yt-dlp>=2026.10.26

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{% block title %}Road Damage AI{% endblock %} · Road Damage AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script defer src="{{ url_for('static', filename='js/common.js') }}"></script>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="{{ url_for('routes.index') }}" aria-label="Road Damage AI 首頁">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21 9 3M20 21 15 3M12 4v3M12 11v3M12 18v3"/></svg>
+        Road Damage AI
+      </a>
+      <nav class="nav" aria-label="主選單">
+        <a href="{{ url_for('routes.image_page') }}" {% if active == 'image' %}aria-current="page"{% endif %}>圖片辨識</a>
+        <a href="{{ url_for('routes.video_page') }}" {% if active == 'video' %}aria-current="page"{% endif %}>影片辨識</a>
+      </nav>
+      <span id="health" class="health" data-state="checking" role="status"><i></i><span>檢查中</span></span>
+    </div>
+  </header>
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">辨識結果僅供參考，不是道路安全評估；未偵測到不代表道路沒有損壞。</footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

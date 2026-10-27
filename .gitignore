@@ -1,0 +1,31 @@
+# Python virtual environments
+.venv/
+venv/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Test and coverage output
+.coverage
+.coverage.*
+htmlcov/
+
+# Local application results and uploads
+instance/
+
+# Training runs and generated checkpoints
+runs/
+
+# Local environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Local editor and operating system files
+.vscode/
+.DS_Store
+*.log

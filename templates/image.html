@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}圖片辨識{% endblock %}
+{% block content %}
+<section class="page-head">
+  <h1>圖片辨識</h1>
+  <p>上傳道路照片，自動標出裂縫與坑洞。可一次選擇多張。</p>
+</section>
+
+<label id="dropzone" class="dropzone" for="fileInput">
+  <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+  <strong>拖曳圖片到這裡</strong>
+  <span>或 <u>選擇檔案</u></span>
+  <small>JPG、PNG、WEBP · 每張 16 MB 內 · 一次最多 20 張</small>
+  <input id="fileInput" type="file" multiple accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+</label>
+<p id="error" class="alert" role="alert" hidden></p>
+
+<section id="queue" hidden aria-label="圖片清單">
+  <div class="toolbar">
+    <div>
+      <strong id="queueTitle"></strong>
+      <span id="queueSub" class="muted"></span>
+    </div>
+    <div class="toolbar-actions">
+      <button id="clearAll" class="btn ghost" type="button">全部清除</button>
+      <button id="stop" class="btn ghost" type="button" hidden>停止</button>
+      <button id="detect" class="btn primary" type="button" disabled>開始辨識</button>
+    </div>
+  </div>
+  <progress id="progress" max="100" value="0" aria-label="整體進度" hidden></progress>
+  <div id="summary" class="summary" hidden></div>
+  <ul id="grid" class="grid"></ul>
+</section>
+
+<dialog id="viewer" aria-labelledby="vName">
+  <div class="viewer-head">
+    <div class="viewer-title"><strong id="vName"></strong><span id="vMeta" class="muted"></span></div>
+    <div class="viewer-head-actions">
+      <button id="vPrev" class="icon-btn" type="button" aria-label="上一張">‹</button>
+      <button id="vNext" class="icon-btn" type="button" aria-label="下一張">›</button>
+      <button id="vClose" class="icon-btn" type="button" aria-label="關閉">✕</button>
+    </div>
+  </div>
+  <div class="viewer-body">
+    <div class="viewer-media">
+      <div class="seg" role="group" aria-label="切換檢視">
+        <button type="button" data-view="result" aria-pressed="true">辨識結果</button>
+        <button type="button" data-view="original" aria-pressed="false">原始圖片</button>
+      </div>
+      <div class="media-frame"><img id="vImage" alt="道路圖片"><svg id="vOverlay" preserveAspectRatio="none" aria-hidden="true"></svg></div>
+    </div>
+    <aside class="viewer-side">
+      <p id="vMessage" class="viewer-message"></p>
+      <div id="vCounts" class="chips" aria-label="各類別數量"></div>
+      <div class="viewer-actions">
+        <a id="vDownload" class="btn primary" download>下載標記圖片</a>
+        <a id="vJson" class="btn ghost" download>JSON</a>
+        <a id="vCsv" class="btn ghost" download>CSV</a>
+      </div>
+      <details class="more" id="vDetails">
+        <summary>物件明細</summary>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>類別</th><th>信心</th><th>位置</th><th>範圍 (像素)</th></tr></thead>
+            <tbody id="vRows"></tbody>
+          </table>
+        </div>
+        <p class="hint">信心分數是模型的把握程度，不等於準確率。座標以左上角為原點。</p>
+      </details>
+    </aside>
+  </div>
+</dialog>
+{% endblock %}
+{% block scripts %}<script defer src="{{ url_for('static', filename='js/image.js') }}"></script>{% endblock %}
