@@ -2,7 +2,7 @@ FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PORT=8080 \
+    PORT=5000 \
     ROAD_DAMAGE_RESULT_DIR=/tmp/road-damage-results
 
 RUN apt-get update \
@@ -19,7 +19,7 @@ RUN useradd --create-home --uid 10001 appuser
 COPY --chown=appuser:appuser . .
 USER appuser
 
-EXPOSE 8080
+EXPOSE 5000
 
 CMD exec gunicorn \
     --bind "0.0.0.0:${PORT}" \
