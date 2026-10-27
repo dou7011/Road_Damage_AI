@@ -6,22 +6,24 @@ TRAINED_MODEL = ROOT / "runs/road_damage/yolo11n_rdd2022_100ep/weights/best.pt"
 
 
 class Config:
-    SERVER_PORT = 5000
+    SERVER_PORT = int(os.environ.get("PORT", "5000"))
     MODEL_PATH = Path(
         os.environ.get("ROAD_DAMAGE_MODEL", str(TRAINED_MODEL if TRAINED_MODEL.is_file() else ROOT / "best.pt"))
     )
     if not MODEL_PATH.is_absolute():
         MODEL_PATH = ROOT / MODEL_PATH
-    RESULT_DIR = ROOT / "instance/results"
+    RESULT_DIR = Path(os.environ.get("ROAD_DAMAGE_RESULT_DIR", str(ROOT / "instance/results")))
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024
     MAX_IMAGE_PIXELS = 24_000_000
-    VIDEO_MAX_CONTENT_LENGTH = 256 * 1024 * 1024
+    VIDEO_MAX_CONTENT_LENGTH = int(os.environ.get("VIDEO_MAX_CONTENT_LENGTH", str(256 * 1024 * 1024)))
     VIDEO_MAX_PIXELS = 3840 * 2160
     VIDEO_MAX_SECONDS = 600
     VIDEO_MAX_FRAMES = 36000
-    VIDEO_MAX_INTERMEDIATE_BYTES = 4 * 1024 * 1024 * 1024
+    VIDEO_MAX_INTERMEDIATE_BYTES = int(
+        os.environ.get("VIDEO_MAX_INTERMEDIATE_BYTES", str(4 * 1024 * 1024 * 1024))
+    )
     VIDEO_MAX_REPORT_BYTES = 128 * 1024 * 1024
-    VIDEO_MIN_FREE_BYTES = 1024 * 1024 * 1024
+    VIDEO_MIN_FREE_BYTES = int(os.environ.get("VIDEO_MIN_FREE_BYTES", str(1024 * 1024 * 1024)))
     VIDEO_MAX_JOB_RECORDS = 100
     VIDEO_TRANSCODE_TIMEOUT = 600
     YOUTUBE_METADATA_TIMEOUT = 45

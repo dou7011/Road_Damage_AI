@@ -1,0 +1,16 @@
+.git/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.vscode/
+instance/
+runs/
+tests/
+.env
+.env.*
+!.env.example
+.DS_Store

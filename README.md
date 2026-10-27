@@ -39,6 +39,46 @@ python app.py
 
 啟動後開啟 <http://127.0.0.1:5000>。按 `Ctrl+C` 停止伺服器。
 
+## 部署到 Google Cloud Run
+
+專案附有 [Dockerfile](Dockerfile) 與 [.dockerignore](.dockerignore)，可從專案根目錄建置並部署 Cloud Run service。先安裝並登入 [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)，選擇已啟用計費的 Google Cloud 專案，並啟用 Cloud Run 與 Cloud Build API：
+
+```bash
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+```
+
+部署至台灣 `asia-east1` 區域：
+
+```bash
+gcloud run deploy road-damage-ai \
+  --source . \
+  --region asia-east1 \
+  --allow-unauthenticated \
+  --port 8080 \
+  --memory 8Gi \
+  --cpu 4 \
+  --concurrency 8 \
+  --min-instances 1 \
+  --max-instances 1 \
+  --timeout 3600 \
+  --no-cpu-throttling \
+  --set-env-vars ROAD_DAMAGE_RESULT_DIR=/tmp/road-damage-results,VIDEO_MAX_CONTENT_LENGTH=31457280,VIDEO_MAX_INTERMEDIATE_BYTES=1073741824,VIDEO_MIN_FREE_BYTES=536870912
+```
+
+部署完成後，`gcloud` 會輸出服務網址。`--allow-unauthenticated` 會公開網站；若只供授權使用者存取，請移除該旗標並設定 Cloud Run IAM。首次部署需由 Cloud Build 建置映像，並由 Cloud Run 使用 `PORT` 環境變數啟動 Gunicorn。
+
+**目前 Cloud Run 部署的範圍與限制：**
+
+- 設定為單一最小／最大實例，是因工作佇列、模型與影片工作狀態位於單一 Python 程序。單一 worker 避免重複載入模型；固定一個實例避免不同實例看不到彼此的工作與暫存結果。
+- 背景影片工作需要持續 CPU，因此部署指令使用 `--no-cpu-throttling` 並維持至少一個實例。這會增加閒置費用；請在 Cloud Billing 設定預算與告警。
+- Cloud Run 的容器檔案系統與記憶體中的工作狀態不是持久儲存。重新部署、實例重啟或平台回收後，執行中的工作及已產生的結果可能遺失。這個單實例設定適合展示／小規模使用，**不提供工作持久性、高可用或多實例擴展**；正式服務應將上傳與結果移至 Cloud Storage，並把工作狀態移至持久化資料庫／工作佇列。
+- 此部署將影片上傳限制設為 30 MiB（`VIDEO_MAX_CONTENT_LENGTH`），低於 Cloud Run HTTP/1 請求大小限制；不支援直接透過此 API 上傳原先設定的 256 MiB 影片。較大的來源需改用 Cloud Storage 上傳流程。
+- 影片中間檔上限設為 1 GiB，暫存檔寫入 `/tmp`；預設 8 GiB 記憶體是為模型與暫存處理預留空間，仍請依實際影片及帳單需求調整。長片或高解析度影片可能先碰到暫存檔上限。
+
+部署參數亦可依需求調整；降低 `--min` 到 0 可能使背景工作在實例回收時中斷。部署前請確認你有權將 `best.pt` 模型權重及專案依賴部署至 Google Cloud。
+
 ## 模型設定
 
 預設模型位置依序為：
@@ -67,7 +107,7 @@ $env:ROAD_DAMAGE_MODEL = "C:\path\to\best.pt"
 | 影片 | MP4、AVI、MOV、MKV | 256 MB、10 分鐘、最多 36,000 幀、最高 3840 × 2160 |
 | YouTube | HTTPS 單支影片網址 | 需授權、最多 10 分鐘、最高 720p；僅支援符合程式限制的可取得影片 |
 
-圖片與影片結果暫存於 `instance/results/`，保存 24 小時，並在後續請求時清理。影片輸出為 H.264 MP4；影片與 YouTube 共用單一背景工作名額。各項限制可在 [config.py](config.py) 調整。
+圖片與影片結果預設暫存於 `instance/results/`，保存 24 小時，並在後續請求時清理；可用 `ROAD_DAMAGE_RESULT_DIR` 更改位置。影片輸出為 H.264 MP4；影片與 YouTube 共用單一背景工作名額。各項限制可在 [config.py](config.py) 調整。
 
 **YouTube 使用提醒：公開可觀看不代表有權下載。** 請只處理自己擁有或已獲授權，且符合平台條款與著作權規範的影片。程式不使用登入資訊、Cookies 或方式繞過 DRM、付費／地區限制及其他存取控制；YouTube 網址可能因平台或格式限制而無法處理。
 
