@@ -20,12 +20,11 @@
   </a>
 </section>
 <section class="legend" aria-label="可辨識的損壞類型">
-  <h3>可辨識的 4 種損壞</h3>
+  <h3>可辨識的 {{ classes|length }} 種道路破損</h3>
   <ul>
-    <li><i style="background:#38bdf8"></i><b>縱向裂縫</b><span>D00</span></li>
-    <li><i style="background:#a78bfa"></i><b>橫向裂縫</b><span>D10</span></li>
-    <li><i style="background:#fbbf24"></i><b>龜裂</b><span>D20</span></li>
-    <li><i style="background:#fb7185"></i><b>坑洞</b><span>D40</span></li>
+    {% for code, item in classes.items() %}
+    <li><i style="background:{{ item.color }}"></i><b>{{ item.label }}</b><span>{{ code }}</span></li>
+    {% endfor %}
   </ul>
 </section>
 {% endblock %}

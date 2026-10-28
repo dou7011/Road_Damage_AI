@@ -1,6 +1,6 @@
 # Road Damage AI
 
-以 Flask、YOLO 與 OpenCV 建置的道路損壞辨識網站，可分析圖片、影片，以及使用者有權取得與處理的 YouTube 影片。模型可辨識四種道路損壞：縱向裂縫、橫向裂縫、龜裂與坑洞。
+以 Flask、YOLO 與 OpenCV 建置的道路損壞辨識網站，可分析圖片、影片，以及使用者有權取得與處理的 YouTube 影片。模型為 Ultralytics YOLO11m（輸入 640 × 640），可辨識 12 種道路破損類別，詳見下方「辨識類別」。
 
 ## 功能
 
@@ -83,21 +83,46 @@ gcloud run deploy road-damage-ai \
 
 預設模型位置依序為：
 
-1. 環境變數 `ROAD_DAMAGE_MODEL` 指定的路徑（若有設定）。
-2. `runs/road_damage/yolo11n_rdd2022_100ep/weights/best.pt`（若存在）。
-3. 專案根目錄的 `best.pt`。
+1. 環境變數 `YOLO_MODEL_PATH` 指定的路徑（若有設定；舊名稱 `ROAD_DAMAGE_MODEL` 仍可用）。
+2. 專案根目錄的 `best.pt`。
 
-若使用其他位置的模型，請設定 `ROAD_DAMAGE_MODEL`：
+將訓練好的權重（約 40.5 MB）複製為專案根目錄的 `best.pt` 即可；若放在其他位置，請設定 `YOLO_MODEL_PATH`（可參考 [.env.example](.env.example)，不要把個人電腦的絕對路徑寫進程式或提交到 Git）：
 
 ```bash
-export ROAD_DAMAGE_MODEL="/path/to/best.pt"
+export YOLO_MODEL_PATH="/path/to/best.pt"
 ```
 
 ```powershell
-$env:ROAD_DAMAGE_MODEL = "C:\path\to\best.pt"
+$env:YOLO_MODEL_PATH = "C:\path\to\best.pt"
 ```
 
-模型必須是支援 D00、D10、D20、D40 四種類別的 YOLO 偵測模型。模型載入失敗時，應用程式會停止並在終端機顯示錯誤。使用 CUDA 時會優先嘗試 GPU；GPU 初始化或推論失敗時改用 CPU。
+模型必須是 12 類的 YOLO 偵測模型（類別代碼見下表）。找不到模型、權重損毀或類別不符時，應用程式會在啟動時停止，並在終端機顯示明確的錯誤訊息，不會回傳看似成功的空結果。使用 CUDA 時會優先嘗試 GPU；GPU 初始化或推論失敗時改用 CPU。
+
+### 模型資訊
+
+| 項目 | 數值 |
+|---|---|
+| 架構 | Ultralytics YOLO11m，輸入 640 × 640，12 類 |
+| 驗證集 | 7,677 張 |
+| Precision / Recall | 64.9% / 63.8% |
+| mAP50 / mAP50-95 | 66.3% / 38.6% |
+
+以上是模型在驗證集上的整體評估結果，不是單張圖片的辨識準確率；偵測框的 confidence 也只是單一偵測的信心分數。
+
+### 辨識類別
+
+類別索引一律取自載入模型的 `model.names`，程式不會自行排列索引；`best.pt` 的實際對應為 0 D00、1 D10、2 D20、3 D40、4 D44、5 D50、6 Repair、7 D43、8 D01、9 D11、10 Block crack、11 D0w0。中文名稱只用於畫面顯示，統計與篩選皆使用原始類別代碼。對照表集中定義於 [road_damage/classes.py](road_damage/classes.py)，網頁由後端注入，不在前端重複定義。
+
+| 代碼 | 顯示名稱 | 代碼 | 顯示名稱 |
+|---|---|---|---|
+| D00 | 縱向裂縫 | D43 | 斑馬線模糊 |
+| D10 | 橫向裂縫 | D01 | 縱向裂縫（施工接縫） |
+| D20 | 龜裂 | D11 | 橫向裂縫（施工接縫） |
+| D40 | 坑洞 | Block crack | 區塊狀裂縫 |
+| D44 | 白線模糊 | D0w0 | 其他道路破損 |
+| D50 | 人孔蓋 | Repair | 修補痕跡 |
+
+中文名稱依 RDD2018／RDD2022 標註定義；官方文件未說明 `D0w0`，故顯示為「其他道路破損（D0w0）」，確認含義後再於 `classes.py` 修改。
 
 ## 支援格式與限制
 
@@ -138,7 +163,7 @@ python -m unittest discover -s tests -v
 
 ## GitHub 上傳注意事項
 
-- 根目錄 `best.pt` 是預設啟動所需的模型權重，`.gitignore` **不會忽略**它。上傳前請確認你有權分享該模型。
+- 根目錄 `best.pt`（約 40.5 MB）是預設啟動所需的模型權重。若不想把權重放進 GitHub，請執行 `git rm --cached best.pt` 並在 `.gitignore` 加入 `best.pt`，部署時再另行放置；`.gitignore` 已忽略 `models/` 與其他 `*.pt`。若保留提交，請確認你有權分享該模型。
 - 虛擬環境、Python 快取、`.env`、IDE 個人設定、訓練輸出與 `instance/` 結果不應提交。
 - 請勿提交 API 金鑰、密碼、私人影片或其他機密／未授權資料。
 
@@ -147,11 +172,12 @@ python -m unittest discover -s tests -v
 ```text
 .
 ├── app.py                 # Flask 啟動入口
-├── config.py              # 模型路徑與服務限制
+├── config.py              # 模型路徑（YOLO_MODEL_PATH）與服務限制
 ├── road_damage/           # 辨識、圖片／影片處理及 API
 ├── templates/             # Flask 頁面
 ├── static/                # CSS 與 JavaScript
 ├── tests/                 # 自動化測試
 ├── requirements.txt       # Python 依賴
-└── best.pt                # 預設 YOLO 模型
+├── .env.example           # 環境變數範例
+└── best.pt                # 預設 YOLO11m 模型（12 類）
 ```

@@ -2,18 +2,19 @@ import csv
 import io
 import json
 
-from .detector import CLASS_LABELS
+from .classes import CLASS_LABELS, display_name
 
 CSV_FIELDS = [
     "source", "frame_index", "timestamp", "class_label", "class_name", "confidence",
     "x1", "y1", "x2", "y2", "class_id", "class_code", "detection_id",
-    "width", "height", "position",
+    "width", "height", "position", "class_display_name",
 ]
 
 
 def export_detection(item, source, frame_index=None, timestamp=None):
     return {"source": source, "frame_index": frame_index, "timestamp": timestamp,
-            "class_label": CLASS_LABELS.get(item["class_code"]), **item}
+            "class_label": CLASS_LABELS.get(item["class_code"]),
+            "class_display_name": display_name(item["class_code"]), **item}
 
 
 def csv_chunks(detections):

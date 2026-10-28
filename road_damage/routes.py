@@ -7,13 +7,18 @@ from uuid import uuid4
 from flask import Blueprint, abort, current_app, jsonify, render_template, request, send_from_directory, url_for
 from werkzeug.utils import secure_filename
 
-from .detector import CLASS_COLORS
+from .classes import CLASS_COLORS, catalog
 from .images import ALLOWED_FORMATS, InvalidImage, annotate, decode_image, encode_png
 from .reports import csv_chunks, export_detection
 
 routes = Blueprint("routes", __name__)
 RESULT_NAME = re.compile(r"[0-9a-f]{32}_(original|annotated)\.png")
 OWNED_IMAGE_FILE = re.compile(r"[0-9a-f]{32}_(?:(?:original|annotated)\.png|report\.(?:json|csv))")
+
+
+@routes.app_context_processor
+def inject_classes():
+    return {"classes": catalog()}
 
 
 def cleanup_results():

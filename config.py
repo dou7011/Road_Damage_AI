@@ -2,14 +2,15 @@ import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-TRAINED_MODEL = ROOT / "runs/road_damage/yolo11n_rdd2022_100ep/weights/best.pt"
+DEFAULT_MODEL = ROOT / "best.pt"
 
 
 class Config:
     SERVER_PORT = int(os.environ.get("PORT", "5000"))
+    # YOLO_MODEL_PATH is preferred; ROAD_DAMAGE_MODEL is kept as a backward-compatible alias.
     MODEL_PATH = Path(
-        os.environ.get("ROAD_DAMAGE_MODEL", str(TRAINED_MODEL if TRAINED_MODEL.is_file() else ROOT / "best.pt"))
-    )
+        os.environ.get("YOLO_MODEL_PATH") or os.environ.get("ROAD_DAMAGE_MODEL") or str(DEFAULT_MODEL)
+    ).expanduser()
     if not MODEL_PATH.is_absolute():
         MODEL_PATH = ROOT / MODEL_PATH
     RESULT_DIR = Path(os.environ.get("ROAD_DAMAGE_RESULT_DIR", str(ROOT / "instance/results")))

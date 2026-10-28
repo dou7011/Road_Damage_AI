@@ -11,8 +11,12 @@ from PIL import Image
 
 from config import Config
 from road_damage import create_app
+from road_damage.classes import CLASS_COLORS, CLASS_LABELS, catalog, display_name
 from road_damage.detector import Detector
 from road_damage.images import InvalidImage, annotate, decode_image
+
+# Index order of the trained YOLO11m best.pt (read from model.names, never assumed by the app).
+MODEL_NAMES = {0: "D00", 1: "D10", 2: "D20", 3: "D40", 4: "D44", 5: "D50", 6: "Repair", 7: "D43", 8: "D01", 9: "D11", 10: "Block crack", 11: "D0w0"}
 
 
 def image_bytes(fmt="PNG", size=(640, 480)):
@@ -25,7 +29,7 @@ class FixtureDetector:
     path = Path("test-only.pt")
     device = "cpu"
     confidence = 0.25
-    names = {9: "D40", 3: "D00", 7: "D20", 5: "D10"}
+    names = MODEL_NAMES
 
     def __init__(self, detections=None):
         self.detections = detections or []
@@ -54,7 +58,42 @@ class APITests(unittest.TestCase):
         self.assertEqual(self.client.get("/").status_code, 200)
         response = self.client.get("/api/health")
         self.assertTrue(response.json["model"]["loaded"])
-        self.assertEqual(response.json["model"]["names"]["9"], "D40")
+        self.assertEqual(response.json["model"]["names"]["3"], "D40")
+        self.assertEqual(len(response.json["model"]["names"]), 12)
+
+    def test_all_12_classes_have_traditional_chinese_names(self):
+        self.assertEqual(list(CLASS_LABELS), [
+            "D00", "D10", "D20", "D40", "D44", "D50", "Repair", "D43", "D01", "D11", "Block crack", "D0w0"])
+        self.assertEqual(display_name("D40"), "坑洞（D40）")
+        self.assertEqual(display_name("D0w0"), "其他道路破損（D0w0）")
+        home = self.client.get("/").get_data(as_text=True)
+        self.assertIn("可辨識的 12 種道路破損", home)
+        page = self.client.get("/image").get_data(as_text=True)
+        start = page.index('id="class-catalog">') + len('id="class-catalog">')
+        import json
+        embedded = json.loads(page[start:page.index("</script>", start)])
+        self.assertEqual(embedded, catalog())
+        for code, info in embedded.items():
+            self.assertIn(info["label"], home)
+            self.assertEqual(info["display_name"], display_name(code))
+
+    def test_every_class_is_counted_under_its_own_code(self):
+        def detection(index, code):
+            return {
+                "id": index + 1, "class_id": index, "class_code": code, "class_name": code,
+                "class_label": CLASS_LABELS[code], "class_display_name": display_name(code),
+                "confidence": .8, "color": CLASS_COLORS[code],
+                "bbox": {"x1": 10, "y1": 10, "x2": 50, "y2": 50, "width": 40, "height": 40},
+                "position": {"label": "上左", "center_x": 30, "center_y": 30},
+            }
+        self.detector.detections = [detection(index, code) for index, code in MODEL_NAMES.items()]
+        body = self.upload().json
+        self.assertEqual(body["summary"], {"total": 12, **{code: 1 for code in MODEL_NAMES.values()}})
+        with self.client.get(body["csv_url"]) as report:
+            records = list(csv.DictReader(io.StringIO(report.data.decode("utf-8-sig"))))
+        self.assertEqual([row["class_code"] for row in records], list(MODEL_NAMES.values()))
+        self.assertEqual([row["class_label"] for row in records], [CLASS_LABELS[c] for c in MODEL_NAMES.values()])
+        self.assertEqual(records[11]["class_display_name"], "其他道路破損（D0w0）")
 
     def test_image_and_video_are_separate_pages(self):
         home = self.client.get("/").get_data(as_text=True)
@@ -80,7 +119,8 @@ class APITests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json
         self.assertEqual(body["message"], "未偵測到符合條件的道路損壞")
-        self.assertEqual(body["summary"], {"total": 0, "D00": 0, "D10": 0, "D20": 0, "D40": 0})
+        self.assertEqual(body["summary"], {"total": 0, **{code: 0 for code in MODEL_NAMES.values()}})
+        self.assertEqual(len(body["summary"]), 13)
         self.assertEqual((body["image_width"], body["image_height"]), (640, 480))
         self.assertGreaterEqual(body["processing_time"], 0)
         for url in (body["image"], body["original_image"], body["download_url"]):
@@ -99,8 +139,8 @@ class APITests(unittest.TestCase):
 
     def test_real_annotations_and_object_details(self):
         item = {
-            "id": 1, "class_id": 9, "class_code": "D40", "class_name": "D40",
-            "confidence": 0.92, "color": "#fb7185",
+            "id": 1, "class_id": 3, "class_code": "D40", "class_name": "D40",
+            "class_label": "坑洞", "class_display_name": "坑洞（D40）", "confidence": 0.92, "color": "#fb7185",
             "bbox": {"x1": 120, "y1": 200, "x2": 360, "y2": 340, "width": 240, "height": 140},
             "position": {"label": "中中", "center_x": 240, "center_y": 270},
         }
@@ -230,7 +270,8 @@ class ImageTests(unittest.TestCase):
             decode_image(stream.getvalue(), "png", 10000)
 
     def test_class_colors(self):
-        from road_damage.detector import CLASS_COLORS
+        self.assertEqual(set(CLASS_COLORS), set(MODEL_NAMES.values()))
+        self.assertEqual(len(set(CLASS_COLORS.values())), 12)
         for code, color in CLASS_COLORS.items():
             canvas = np.zeros((300, 300, 3), dtype=np.uint8)
             result = annotate(canvas, [{
@@ -251,18 +292,28 @@ class ModelTests(unittest.TestCase):
             })
             self.assertEqual(response.status_code, 200)
             self.assertTrue(response.json["success"])
-            self.assertEqual(set(detector.names.values()), {"D00", "D10", "D20", "D40"})
+            self.assertEqual(set(detector.names.values()), set(MODEL_NAMES.values()))
+            self.assertEqual(len(detector.names), 12)
             self.assertEqual(response.json["summary"]["total"], len(response.json["detections"]))
             self.assertTrue((Path(directory) / Path(response.json["image"]).name).is_file())
 
     def test_missing_model(self):
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaisesRegex(FileNotFoundError, "YOLO_MODEL_PATH"):
             Detector(Path("does-not-exist.pt"), .25)
+
+    def test_model_with_wrong_classes_is_rejected(self):
+        from unittest.mock import MagicMock
+        model = MagicMock()
+        model.names = {0: "D00", 1: "D10", 2: "D20", 3: "D40"}
+        model.task = "detect"
+        with patch("road_damage.detector.YOLO", return_value=model):
+            with self.assertRaisesRegex(ValueError, "模型類別不符"):
+                Detector(Config.MODEL_PATH, .25)
 
     def test_cuda_failure_retries_cpu(self):
         from unittest.mock import MagicMock
         model = MagicMock()
-        model.names = {9: "D40", 3: "D00", 7: "D20", 5: "D10"}
+        model.names = dict(MODEL_NAMES)
         model.task = "detect"
         empty_result = MagicMock()
         empty_result.boxes.xyxy.cpu.return_value.tolist.return_value = []
@@ -277,25 +328,27 @@ class ModelTests(unittest.TestCase):
             with self.assertLogs("road_damage.detector", level="ERROR"):
                 self.assertEqual(detector.predict(np.zeros((40, 40, 3), dtype=np.uint8)), [])
             self.assertEqual(detector.device, "cpu")
-            self.assertEqual(detector.names[9], "D40")
+            self.assertEqual(detector.names[3], "D40")
 
     def test_model_outputs_use_actual_mapping_and_original_coordinates(self):
         from unittest.mock import MagicMock
         model = MagicMock()
-        model.names = {9: "D40", 3: "D00", 7: "D20", 5: "D10"}
+        model.names = dict(MODEL_NAMES)
         model.task = "detect"
         result = MagicMock()
         result.boxes.xyxy.cpu.return_value.tolist.return_value = [[120.0, 200.0, 360.0, 340.0]]
         result.boxes.conf.cpu.return_value.tolist.return_value = [0.9234567]
-        result.boxes.cls.cpu.return_value.tolist.return_value = [9.0]
+        result.boxes.cls.cpu.return_value.tolist.return_value = [3.0]
         model.predict.return_value = [result]
         with patch("road_damage.detector.YOLO", return_value=model), patch(
             "road_damage.detector.torch.cuda.is_available", return_value=False
         ):
             detector = Detector(Config.MODEL_PATH, .25)
             items = detector.predict(np.zeros((1080, 1920, 3), dtype=np.uint8))
-        self.assertEqual(items[0]["class_id"], 9)
+        self.assertEqual(items[0]["class_id"], 3)
         self.assertEqual(items[0]["class_name"], "D40")
+        self.assertEqual(items[0]["class_label"], "坑洞")
+        self.assertEqual(items[0]["class_display_name"], "坑洞（D40）")
         self.assertEqual(items[0]["confidence"], 0.923457)
         self.assertEqual(items[0]["bbox"], {
             "x1": 120, "y1": 200, "x2": 360, "y2": 340, "width": 240, "height": 140,

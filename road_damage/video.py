@@ -13,7 +13,7 @@ from uuid import uuid4
 import cv2
 import imageio_ffmpeg
 
-from .detector import CLASS_COLORS
+from .classes import CLASS_COLORS
 from .images import annotate
 
 LOGGER = logging.getLogger(__name__)

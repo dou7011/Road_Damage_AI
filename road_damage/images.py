@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps, UnidentifiedImageError
 
-from .detector import CLASS_COLORS, CLASS_LABELS
+from .classes import CLASS_COLORS, display_name
 
 LOGGER = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ def label_font(size):
 
 def label_text(item, font):
     code = item["class_code"]
-    name = CLASS_LABELS.get(code, item["class_name"]) if font else code
+    name = display_name(code) if font else code
     return f"#{item['id']} {name} {item['confidence']:.0%}"
 
 

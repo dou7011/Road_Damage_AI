@@ -29,3 +29,8 @@ runs/
 .vscode/
 .DS_Store
 *.log
+
+# Model weights other than the default best.pt (never commit personal paths or training outputs)
+models/
+*.pt
+!best.pt

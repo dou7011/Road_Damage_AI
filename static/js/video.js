@@ -165,7 +165,7 @@
       const dot = document.createElement("i");
       dot.className = "dot";
       dot.style.background = item.color;
-      type.append(dot, ` ${item.label}`);
+      type.append(dot, ` ${item.display_name}`);
       row.insertCell().textContent = result.summary[code];
       row.insertCell().textContent = result.average_confidence[code] === null
         ? "—" : `${(result.average_confidence[code] * 100).toFixed(0)}%`;
@@ -227,7 +227,7 @@
     dot.className = "dot";
     dot.style.background = info?.color ?? "#999";
     const name = document.createElement("span");
-    name.textContent = info?.label ?? code;
+    name.textContent = RD.displayName(code);
     const tag = document.createElement("small");
     tag.textContent = `#${id}`;
     what.append(dot, name, tag);

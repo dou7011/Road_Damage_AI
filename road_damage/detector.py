@@ -8,20 +8,30 @@ os.environ.setdefault("YOLO_AUTOINSTALL", "false")
 import torch
 from ultralytics import YOLO
 
+from .classes import CLASS_COLORS, CLASS_LABELS, display_name
+
 LOGGER = logging.getLogger(__name__)
-CLASS_COLORS = {"D00": "#38bdf8", "D10": "#a78bfa", "D20": "#fbbf24", "D40": "#fb7185"}
-CLASS_LABELS = {"D00": "縱向裂縫", "D10": "橫向裂縫", "D20": "龜裂", "D40": "坑洞"}
 
 
 class Detector:
     def __init__(self, path, confidence):
         self.path = path.resolve()
         if not self.path.is_file():
-            raise FileNotFoundError(f"Model not found: {self.path}")
-        self.model = YOLO(str(self.path))
+            raise FileNotFoundError(
+                f"找不到道路破損模型：{self.path}。請將 best.pt 放在專案根目錄，"
+                "或以環境變數 YOLO_MODEL_PATH 指定模型路徑。"
+            )
+        try:
+            self.model = YOLO(str(self.path))
+        except Exception as error:
+            raise RuntimeError(f"模型載入失敗：{self.path}（{error}）。請確認檔案是完整的 Ultralytics YOLO best.pt。") from error
         self.names = dict(self.model.names)
-        if self.model.task != "detect" or set(self.names.values()) != set(CLASS_COLORS):
-            raise ValueError(f"Expected D00/D10/D20/D40 detection model, got {self.names}")
+        if self.model.task != "detect" or len(self.names) != len(CLASS_COLORS) \
+                or set(self.names.values()) != set(CLASS_COLORS):
+            raise ValueError(
+                f"模型類別不符：需要 {len(CLASS_COLORS)} 類 YOLO 偵測模型 ({', '.join(CLASS_COLORS)})，"
+                f"實際為 task={self.model.task}、names={self.names}"
+            )
         self.confidence = confidence
         self.lock = Lock()
         self.device = "cpu"
@@ -66,6 +76,7 @@ class Detector:
                 detections.append({
                     "id": len(detections) + 1,
                     "class_id": class_id, "class_code": name, "class_name": name,
+                    "class_label": CLASS_LABELS[name], "class_display_name": display_name(name),
                     "confidence": round(score, 6), "color": CLASS_COLORS[name],
                     "bbox": {"x1": x1, "y1": y1, "x2": x2, "y2": y2,
                              "width": round(x2 - x1, 2), "height": round(y2 - y1, 2)},

@@ -43,7 +43,8 @@ class VideoDetector:
     path = Path("test-only.pt")
     device = "cpu"
     confidence = .25
-    names = {0: "D00", 1: "D10", 2: "D20", 3: "D40"}
+    names = {0: "D00", 1: "D10", 2: "D20", 3: "D40", 4: "D44", 5: "D50", 6: "Repair",
+             7: "D43", 8: "D01", 9: "D11", 10: "Block crack", 11: "D0w0"}
 
     def __init__(self):
         self.frames = 0
@@ -109,7 +110,9 @@ class VideoTests(unittest.TestCase):
         result = job["result"]
         self.assertEqual(job["progress"], 100)
         self.assertTrue(all(0 <= item["progress"] <= 100 for item in snapshots))
-        self.assertEqual(result["summary"], {"total": 2, "D00": 0, "D10": 0, "D20": 0, "D40": 2})
+        self.assertEqual(result["summary"], {"total": 2, **{code: 0 for code in VideoDetector.names.values()}, "D40": 2})
+        self.assertEqual(len(result["summary"]), 13)
+        self.assertEqual(set(result["average_confidence"]), set(VideoDetector.names.values()))
         self.assertEqual(result["frames_with_detections"], 2)
         self.assertEqual(result["average_confidence"]["D40"], .7)
         self.assertIsNone(result["average_confidence"]["D00"])
@@ -195,6 +198,7 @@ class VideoTests(unittest.TestCase):
         self.assertEqual([float(row["confidence"]) for row in rows], [.8, .6])
         self.assertEqual(rows[1]["class_name"], "D40")
         self.assertEqual(rows[1]["class_label"], "坑洞")
+        self.assertEqual(rows[1]["class_display_name"], "坑洞（D40）")
         self.assertEqual(exported["detections"][0]["class_label"], "坑洞")
         listing = self.client.get(result["detections_url"]).json
         self.assertEqual(listing["total"], 2)

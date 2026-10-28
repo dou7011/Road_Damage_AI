@@ -1,11 +1,8 @@
 "use strict";
 (() => {
-  const CLASSES = {
-    D00: {label: "縱向裂縫", color: "#38bdf8"},
-    D10: {label: "橫向裂縫", color: "#a78bfa"},
-    D20: {label: "龜裂", color: "#fbbf24"},
-    D40: {label: "坑洞", color: "#fb7185"}
-  };
+  // Class names/colors come from the server (road_damage/classes.py); keys are raw model class codes.
+  const CLASSES = JSON.parse(document.getElementById("class-catalog").textContent);
+  const displayName = (code) => CLASSES[code]?.display_name ?? code;
   const state = {ready: false};
 
   function setDownload(element, url) {
@@ -27,7 +24,7 @@
     dot.className = "dot";
     dot.style.background = item.color;
     const text = document.createElement("span");
-    text.textContent = item.label;
+    text.textContent = item.display_name;
     const number = document.createElement("b");
     number.textContent = count;
     span.append(dot, text, number);
@@ -51,7 +48,7 @@
     document.dispatchEvent(new CustomEvent("rd:health"));
   }
 
-  window.RD = {CLASSES, state, setDownload, formatSize, chip};
+  window.RD = {CLASSES, displayName, state, setDownload, formatSize, chip};
   checkHealth();
   setInterval(checkHealth, 30000);
 })();

@@ -273,7 +273,7 @@
       const dot = document.createElement("i");
       dot.className = "dot";
       dot.style.background = detection.color;
-      type.append(dot, ` ${CLASSES[detection.class_code]?.label ?? detection.class_code}`);
+      type.append(dot, ` ${RD.displayName(detection.class_code)}`);
       row.insertCell().textContent = `${(detection.confidence * 100).toFixed(0)}%`;
       row.insertCell().textContent = position(detection.position.label);
       row.insertCell().textContent = `(${Math.round(box.x1)}, ${Math.round(box.y1)}) – (${Math.round(box.x2)}, ${Math.round(box.y2)})`;
